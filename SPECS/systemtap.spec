@@ -60,7 +60,7 @@
 
 Name: systemtap
 Version: 3.0
-Release: 4%{?dist}
+Release: 5%{?dist}
 # for version, see also configure.ac
 
 
