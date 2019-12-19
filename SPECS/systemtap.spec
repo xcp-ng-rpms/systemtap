@@ -21,7 +21,9 @@
 %endif
 %{!?with_bpf: %global with_bpf 0%{?fedora} >= 22 || 0%{?rhel} >= 8}
 %{!?with_systemd: %global with_systemd 0%{?fedora} >= 19 || 0%{?rhel} >= 7}
-%{!?with_emacsvim: %global with_emacsvim 0%{?fedora} >= 19 || 0%{?rhel} >= 7}
+## We do not want emacs - it just bloats the build dependencies
+## %%{!?with_emacsvim: %%global with_emacsvim 0%%{?fedora} >= 19 || 0%%{?rhel} >= 7}
+%{!?with_emacsvim: %global with_emacsvim 0}
 %{!?with_java: %global with_java 0%{?fedora} >= 19 || 0%{?rhel} >= 7}
 %{!?with_virthost: %global with_virthost 0%{?fedora} >= 19 || 0%{?rhel} >= 7}
 %{!?with_virtguest: %global with_virtguest 1}
@@ -84,7 +86,7 @@
 
 Name: systemtap
 Version: 4.0
-Release: 1%{?release_override}%{?dist}
+Release: 2%{?release_override}%{?dist}
 # for version, see also configure.ac
 
 
@@ -1274,6 +1276,9 @@ done
 
 # PRERELEASE
 %changelog
+* Fri Jun 14 2019 Tim Smith <tim.smith@citrix.com> - 4.0-2
+- Turn off emacsvim support unconditionally
+
 * Sat Oct 13 2018 Frank Ch. Eigler <fche@redhat.com> - 4.0-1
 - Upstream release.
 
