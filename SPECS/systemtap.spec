@@ -1,3 +1,9 @@
+%global package_speccommit 7cbbc00e9fa3f7074ecd61a6065cdca449bb4f44
+%global usver 4.0
+%global xsver 5
+%global xsrel %{xsver}%{?xscount}%{?xshash}
+
+%{!?with_testsuite: %global with_testsuite 0}
 %{!?with_sqlite: %global with_sqlite 0%{?fedora} >= 17 || 0%{?rhel} >= 7}
 # prefer prebuilt docs
 %{!?with_docs: %global with_docs 0}
@@ -24,12 +30,12 @@
 ## We do not want emacs - it just bloats the build dependencies
 ## %%{!?with_emacsvim: %%global with_emacsvim 0%%{?fedora} >= 19 || 0%%{?rhel} >= 7}
 %{!?with_emacsvim: %global with_emacsvim 0}
-%{!?with_java: %global with_java 0%{?fedora} >= 19 || 0%{?rhel} >= 7}
-%{!?with_virthost: %global with_virthost 0%{?fedora} >= 19 || 0%{?rhel} >= 7}
+%{!?with_java: %global with_java 0}
+%{!?with_virthost: %global with_virthost 0}
 %{!?with_virtguest: %global with_virtguest 1}
 %{!?with_dracut: %global with_dracut 0%{?fedora} >= 19 || 0%{?rhel} >= 6}
 %ifarch x86_64
-%{!?with_mokutil: %global with_mokutil 0%{?fedora} >= 18 || 0%{?rhel} >= 7}
+%{!?with_mokutil: %global with_mokutil 0}
 %{!?with_openssl: %global with_openssl 0%{?fedora} >= 18 || 0%{?rhel} >= 7}
 %else
 %{!?with_mokutil: %global with_mokutil 0}
@@ -86,7 +92,7 @@
 
 Name: systemtap
 Version: 4.0
-Release: 2%{?release_override}%{?dist}
+Release: %{?xsrel}%{?dist}
 # for version, see also configure.ac
 
 
@@ -121,12 +127,8 @@ Summary: Programmable system-wide instrumentation system
 Group: Development/System
 License: GPLv2+
 URL: http://sourceware.org/systemtap/
-#Source: ftp://sourceware.org/pub/systemtap/releases/systemtap-%{version}.tar.gz
-
-Source0: https://repo.citrite.net/xs-local-contrib/systemtap/systemtap-4.0.tar.gz
-
-
-
+#Source: ftp://sourceware.org/pub/systemtap/releases/systemtap-%%{version}.tar.gz
+Source0: systemtap-4.0.tar.gz
 
 # Build*
 BuildRequires: gcc-c++
@@ -159,6 +161,7 @@ BuildRequires: crash-devel zlib-devel
 BuildRequires: rpm-devel
 %endif
 %if %{with_bundled_elfutils}
+Source1: elfutils-%{elfutils_version}.tar.gz
 BuildRequires: m4
 %global setup_elfutils -a1
 %else
@@ -211,6 +214,8 @@ BuildRequires: python3-setuptools
 BuildRequires: libmicrohttpd-devel
 BuildRequires: libuuid-devel
 %endif
+
+%{?_cov_buildrequires}
 
 # Install requirements
 Requires: systemtap-client = %{version}-%{release}
@@ -365,6 +370,7 @@ with the optional dtrace-compatibility preprocessor to process related
 .d files into tracing-macro-laden .h headers.
 
 
+%if %{with_testsuite}
 %package testsuite
 Summary: Instrumentation System Testsuite
 Group: Development/System
@@ -420,6 +426,7 @@ Requires: perf
 This package includes the dejagnu-based systemtap stress self-testing
 suite.  This may be used by system administrators to thoroughly check
 systemtap on the current system.
+%endif
 
 
 %if %{with_java}
@@ -534,6 +541,8 @@ find . \( -name configure -o -name config.h.in \) -print | xargs touch
 cd ..
 %endif
 
+%{?_cov_prepare}
+
 %build
 
 %if %{with_bundled_elfutils}
@@ -542,7 +551,7 @@ cd ..
 
 # We have to prevent the standard dependency generation from identifying
 # our private elfutils libraries in our provides and requires.
-%global _use_internal_dependency_generator	0
+%global _use_internal_dependency_generator    0
 %global filter_eulibs() /bin/sh -c "%{1} | sed '/libelf/d;/libdw/d;/libebl/d'"
 %global __find_provides %{filter_eulibs /usr/lib/rpm/find-provides}
 %global __find_requires %{filter_eulibs /usr/lib/rpm/find-requires}
@@ -647,7 +656,7 @@ cd ..
 %global py_auto_byte_compile 0
 
 %configure %{?elfutils_config} %{dyninst_config} %{sqlite_config} %{crash_config} %{docs_config} %{pie_config} %{rpm_config} %{java_config} %{virt_config} %{dracut_config} %{python3_config} %{python2_probes_config} %{python3_probes_config} %{httpd_config} %{bpf_config} --disable-silent-rules --with-extra-version="rpm %{version}-%{release}"
-make %{?_smp_mflags}
+%{?_cov_wrap} make %{?_smp_mflags}
 
 %if %{with_emacsvim}
 %{_emacs_bytecompile} emacs/systemtap-mode.el
@@ -680,8 +689,10 @@ chmod 755 $RPM_BUILD_ROOT%{_bindir}/staprun
 #install the useful stap-prep script
 install -c -m 755 stap-prep $RPM_BUILD_ROOT%{_bindir}/stap-prep
 
+%if %{with_testsuite}
 # Copy over the testsuite
 cp -rp testsuite $RPM_BUILD_ROOT%{_datadir}/systemtap
+%endif
 
 # We want the manuals in the special doc dir, not the generic doc install dir.
 # We build it in place and then move it away so it doesn't get installed
@@ -708,7 +719,7 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/run/systemtap
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d
 install -m 644 initscript/logrotate.stap-server $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/stap-server
 
-# If using systemd systemtap.service file, retain the old init script in %{_libexecdir} as a helper.
+# If using systemd systemtap.service file, retain the old init script in %%{_libexecdir} as a helper.
 %if %{with_systemd}
 mkdir -p $RPM_BUILD_ROOT%{_unitdir}
 touch $RPM_BUILD_ROOT%{_unitdir}/systemtap.service
@@ -720,7 +731,7 @@ mkdir -p $RPM_BUILD_ROOT%{initdir}
 install -m 755 initscript/systemtap $RPM_BUILD_ROOT%{initdir}
 mkdir -p $RPM_BUILD_ROOT%{_sbindir}
 ln -sf %{initdir}/systemtap $RPM_BUILD_ROOT%{_sbindir}/systemtap-service
-# TODO CHECK CORRECTNESS: symlink %{_sbindir}/systemtap-service to %{initdir}/systemtap
+# TODO CHECK CORRECTNESS: symlink %%{_sbindir}/systemtap-service to %%{initdir}/systemtap
 %endif
 
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/systemtap
@@ -780,6 +791,8 @@ done
    touch $RPM_BUILD_ROOT%{dracutstap}/params.conf
 %endif
 
+%{?_cov_install}
+
 %pre runtime
 getent group stapusr >/dev/null || groupadd -g 156 -r stapusr 2>/dev/null || groupadd -r stapusr
 getent group stapsys >/dev/null || groupadd -g 157 -r stapsys 2>/dev/null || groupadd -r stapsys
@@ -792,6 +805,7 @@ getent passwd stap-server >/dev/null || \
   useradd -c "Systemtap Compile Server" -u 155 -g stap-server -d %{_localstatedir}/lib/stap-server -r -s /sbin/nologin stap-server 2>/dev/null || \
   useradd -c "Systemtap Compile Server" -g stap-server -d %{_localstatedir}/lib/stap-server -r -s /sbin/nologin stap-server
 
+%if %{with_testsuite}
 %pre testsuite
 getent passwd stapusr >/dev/null || \
     useradd -c "Systemtap 'stapusr' User" -g stapusr -r -s /sbin/nologin stapusr
@@ -800,6 +814,7 @@ getent passwd stapsys >/dev/null || \
 getent passwd stapdev >/dev/null || \
     useradd -c "Systemtap 'stapdev' User" -g stapdev -G stapusr -r -s /sbin/nologin stapdev
 exit 0
+%endif
 
 %post server
 
@@ -807,7 +822,7 @@ exit 0
 # ~stap-server directories and the explicit mkdir/chown/chmod bits
 # here.  Part of the reason may be that a preexisting stap-server
 # account may well be placed somewhere other than
-# %{_localstatedir}/lib/stap-server, but we'd like their permissions
+# %%{_localstatedir}/lib/stap-server, but we'd like their permissions
 # set similarly.
 
 test -e ~stap-server && chmod 750 ~stap-server
@@ -990,22 +1005,22 @@ exit 0
 %triggerin runtime-java -- java-1.8.0-openjdk, java-1.7.0-openjdk, java-1.6.0-openjdk
 for f in %{_libexecdir}/systemtap/libHelperSDT_*.so; do
     %ifarch %{ix86}
-	arch=i386
+    arch=i386
     %else
         arch=`basename $f | cut -f2 -d_ | cut -f1 -d.`
     %endif
     for archdir in %{_jvmdir}/*openjdk*/jre/lib/${arch}; do
-	 if [ -d ${archdir} ]; then
+     if [ -d ${archdir} ]; then
             ln -sf %{_libexecdir}/systemtap/libHelperSDT_${arch}.so ${archdir}/libHelperSDT_${arch}.so
             ln -sf %{_libexecdir}/systemtap/HelperSDT.jar ${archdir}/../ext/HelperSDT.jar
-	 fi
+     fi
     done
 done
 
 %triggerun runtime-java -- java-1.8.0-openjdk, java-1.7.0-openjdk, java-1.6.0-openjdk
 for f in %{_libexecdir}/systemtap/libHelperSDT_*.so; do
     %ifarch %{ix86}
-	arch=i386
+    arch=i386
     %else
         arch=`basename $f | cut -f2 -d_ | cut -f1 -d.`
     %endif
@@ -1019,15 +1034,15 @@ done
 # Restore links for any JDKs remaining after a package removal:
 for f in %{_libexecdir}/systemtap/libHelperSDT_*.so; do
     %ifarch %{ix86}
-	arch=i386
+    arch=i386
     %else
         arch=`basename $f | cut -f2 -d_ | cut -f1 -d.`
     %endif
     for archdir in %{_jvmdir}/*openjdk*/jre/lib/${arch}; do
-	 if [ -d ${archdir} ]; then
+     if [ -d ${archdir} ]; then
             ln -sf %{_libexecdir}/systemtap/libHelperSDT_${arch}.so ${archdir}/libHelperSDT_${arch}.so
             ln -sf %{_libexecdir}/systemtap/HelperSDT.jar ${archdir}/../ext/HelperSDT.jar
-	 fi
+     fi
     done
 done
 
@@ -1070,7 +1085,7 @@ done
 %dir %attr(0755,stap-server,stap-server) %{_localstatedir}/log/stap-server
 %ghost %config(noreplace) %attr(0644,stap-server,stap-server) %{_localstatedir}/log/stap-server/log
 %ghost %attr(0755,stap-server,stap-server) %{_localstatedir}/run/stap-server
-%doc README README.unprivileged AUTHORS NEWS 
+%doc README README.unprivileged AUTHORS NEWS
 %{!?_licensedir:%global license %%doc}
 %license COPYING
 
@@ -1088,7 +1103,7 @@ done
 %{_mandir}/man7/error*
 %{_mandir}/man7/stappaths.7*
 %{_mandir}/man7/warning*
-%doc README README.unprivileged AUTHORS NEWS 
+%doc README README.unprivileged AUTHORS NEWS
 %{!?_licensedir:%global license %%doc}
 %license COPYING
 %if %{with_java}
@@ -1144,7 +1159,7 @@ done
 %if %{with_bpf}
 %{_mandir}/man8/stapbpf.8*
 %endif
-%doc README README.security AUTHORS NEWS 
+%doc README README.security AUTHORS NEWS
 %{!?_licensedir:%global license %%doc}
 %license COPYING
 
@@ -1208,15 +1223,17 @@ done
 %{_includedir}/sys/sdt-config.h
 %{_mandir}/man1/dtrace.1*
 %{_rpmmacrodir}/macros.systemtap
-%doc README AUTHORS NEWS 
+%doc README AUTHORS NEWS
 %{!?_licensedir:%global license %%doc}
 %license COPYING
 
 
+%if %{with_testsuite}
 %files testsuite
 %defattr(-,root,root)
 %dir %{_datadir}/systemtap
 %{_datadir}/systemtap/testsuite
+%endif
 
 
 %if %{with_java}
@@ -1267,6 +1284,8 @@ done
 %{_sbindir}/stap-exporter
 %endif
 
+%{?_cov_results_package}
+
 # ------------------------------------------------------------------------
 
 # Future new-release entries should be of the form
@@ -1276,6 +1295,15 @@ done
 
 # PRERELEASE
 %changelog
+* Mon Feb 14 2022 Ross Lagerwall <ross.lagerwall@citrix.com> - 4.0-5
+- CP-38416: Enable static analysis
+
+* Wed Dec 09 2020 Ross Lagerwall <ross.lagerwall@citrix.com> - 4.0-4
+- Turn off options with dependencies that cannot be installed
+
+* Tue Dec 08 2020 Ross Lagerwall <ross.lagerwall@citrix.com> - 4.0-3
+- CP-35517: Package for koji
+
 * Fri Jun 14 2019 Tim Smith <tim.smith@citrix.com> - 4.0-2
 - Turn off emacsvim support unconditionally
 
