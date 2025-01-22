@@ -92,7 +92,7 @@
 
 Name: systemtap
 Version: 4.0
-Release: %{?xsrel}%{?dist}
+Release: %{?xsrel}.1%{?dist}
 # for version, see also configure.ac
 
 
@@ -129,6 +129,9 @@ License: GPLv2+
 URL: http://sourceware.org/systemtap/
 #Source: ftp://sourceware.org/pub/systemtap/releases/systemtap-%%{version}.tar.gz
 Source0: systemtap-4.0.tar.gz
+
+# XCP-ng specific patches
+Patch1000: systemtap-4.0-Fix-compilation.xcpng8.3.patch
 
 # Build*
 BuildRequires: gcc-c++
@@ -540,6 +543,9 @@ sleep 1
 find . \( -name configure -o -name config.h.in \) -print | xargs touch
 cd ..
 %endif
+
+# XCP-ng patches
+%patch1000 -p1
 
 %{?_cov_prepare}
 
@@ -1295,6 +1301,9 @@ done
 
 # PRERELEASE
 %changelog
+* Wed Jan 22 2025 Thierry Escande <thierry.escande@vates.tech> - 4.0-5.1
+- Fix build error
+
 * Mon Feb 14 2022 Ross Lagerwall <ross.lagerwall@citrix.com> - 4.0-5
 - CP-38416: Enable static analysis
 
