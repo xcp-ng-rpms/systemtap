@@ -1,0 +1,34 @@
+From e03b5f2fcc06ef3967fe3204ab9c0d6b3511ab6a Mon Sep 17 00:00:00 2001
+From: Thierry Escande <thierry.escande@vates.tech>
+Date: Wed, 22 Jan 2025 09:35:57 +0100
+Subject: [PATCH] Fix mistyped array of integers causing build to fail
+Content-Type: text/plain; charset = "utf-8"
+Content-Transfert-Encoding: 8bit
+
+This array of size_t integers is used as width specifiers for strings
+passed to *printf functions. But printf needs int types as width
+specifiers so changed the array type to unsigned int. It needs to be
+unsigned since this array entries are compared to unsigned values (using
+the locally defined MAX() macro).
+
+Signed-off-by: Thierry Escande <thierry.escande@vates.tech>
+---
+ staprun/monitor.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/staprun/monitor.c b/staprun/monitor.c
+index 478634c..96536ba 100644
+--- a/staprun/monitor.c
++++ b/staprun/monitor.c
+@@ -364,7 +364,7 @@ void monitor_render(void)
+       int printed;
+       int col;
+       int i;
+-      size_t width[num_attributes] = {0};
++      unsigned int width[num_attributes] = {0};
+       json_object *jso_uptime, *jso_uid, *jso_mem,
+                   *jso_name, *jso_globals, *jso_probe_list;
+       struct json_object_iterator it, it_end;
+-- 
+2.45.2
+
