@@ -92,7 +92,7 @@
 
 Name: systemtap
 Version: 4.0
-Release: %{?xsrel}.1%{?dist}
+Release: %{?xsrel}.2%{?dist}
 # for version, see also configure.ac
 
 
@@ -1301,6 +1301,9 @@ done
 
 # PRERELEASE
 %changelog
+* Tue Apr 29 2025 Yann Dirson <yann.dirson@vates.tech> - 4.0-5.2
+- Rebuild against ncurses 6.4-6.20240309 to pull abi5 (compat) libs
+
 * Wed Jan 22 2025 Thierry Escande <thierry.escande@vates.tech> - 4.0-5.1
 - Fix build error
 
