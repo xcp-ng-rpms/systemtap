@@ -92,7 +92,7 @@
 
 Name: systemtap
 Version: 4.0
-Release: %{?xsrel}.2%{?dist}
+Release: %{?xsrel}.3%{?dist}
 # for version, see also configure.ac
 
 
@@ -536,7 +536,7 @@ systemtap-runtime-virthost machine to execute systemtap scripts.
 
 %if %{with_bundled_elfutils}
 cd elfutils-%{elfutils_version}
-%patch1 -p1
+%patch -P 1 -p1
 sleep 1
 find . \( -name Makefile.in -o -name aclocal.m4 \) -print | xargs touch
 sleep 1
@@ -545,7 +545,7 @@ cd ..
 %endif
 
 # XCP-ng patches
-%patch1000 -p1
+%patch -P 1000 -p1
 
 %{?_cov_prepare}
 
@@ -1301,6 +1301,9 @@ done
 
 # PRERELEASE
 %changelog
+* Wed May 06 2026 Vincent Michel <vincent.michel@vates.tech> - 4.0-5.3
+- Fix the %%patch macro in the specfile to be compatible with rpm 4.20 and above
+
 * Tue Apr 29 2025 Yann Dirson <yann.dirson@vates.tech> - 4.0-5.2
 - Rebuild against ncurses 6.4-6.20240309 to pull abi5 (compat) libs
 
