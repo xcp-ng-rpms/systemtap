@@ -92,7 +92,7 @@
 
 Name: systemtap
 Version: 4.0
-Release: %{?xsrel}.3%{?dist}
+Release: %{?xsrel}.3~xcpng2882.1%{?dist}
 # for version, see also configure.ac
 
 
